@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Win32-TestServerManager
-version:             0.01
+version:             0.02
 abstract:            manage simple test servers on Win32
 license:             perl
 generated_by:        ExtUtils::MakeMaker version 6.32

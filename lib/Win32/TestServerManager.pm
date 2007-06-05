@@ -6,7 +6,7 @@ use Win32;
 use Win32::Process;
 use File::Spec;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 sub new {
   my $class = shift;
@@ -84,7 +84,7 @@ sub kill {
 
   if ( my $instance = delete $self->{$id} ) {
     unlink $instance->{tmpfile} if $instance->{tmpfile};
-    next if $instance->{dont_kill};
+    return if $instance->{dont_kill};
 
     $instance->{process}->Kill($exitcode);
   }
