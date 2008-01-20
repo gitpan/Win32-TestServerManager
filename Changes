@@ -1,5 +1,10 @@
 Revision history for Win32-TestServerManager
 
+0.03 2008/01/20
+  - blank command line args can be omitted
+  - create_server_with option also accepts a coderef,
+    which would be deparsed and then turned into a server script.
+
 0.02 2007/06/06
   - fixed 'exiting subroutine via next' warning
 

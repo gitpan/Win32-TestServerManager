@@ -2,7 +2,6 @@ Changes
 lib/Win32/TestServerManager.pm
 Makefile.PL
 MANIFEST			This list of files
-META.yml
 README
 t/00_load.t
 t/99_pod.t
@@ -11,3 +10,4 @@ t/basic.t
 t/http_server_simple.t
 t/script/http_server_simple.pl
 t/script/sleep.pl
+META.yml                                 Module meta-data (added by MakeMaker)

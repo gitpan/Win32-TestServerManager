@@ -1,50 +1,92 @@
 use strict;
 use warnings;
-use Test::More tests => 11;
+use Test::More;
 use Win32::TestServerManager;
 
-# spawn ready-made perl script
+my $plan = 0;
+my @tests;
 
 my $manager = Win32::TestServerManager->new;
 
-ok !defined $manager->instance('test'), 'there should no test instance';
-ok !defined $manager->process('test'), 'and there should no test process';
-ok scalar $manager->instances == 0, 'they should not be autovivified';
-eval {
-  $manager->spawn( test => 't/script/sleep.pl' );
-};
-ok !$@, 'test server is launched successfully';
-
-ok $manager->pid('test') > 0, 'and the pid is positive';
-
-$manager->kill('test');
-
-ok scalar $manager->instances == 0, 'and there is no instances';
-
-# on the fly perl script
-
-eval {
-  $manager->spawn( test_on_the_fly => '',
-    { create_server_with => sleep_server() }
-  );
-};
-ok !$@, 'test server on the fly is launched successfully';
-
-ok $manager->pid('test_on_the_fly') > 0, 'and the pid is positive';
-
-my $on_the_fly = $manager->instance('test_on_the_fly');
-
-ok -f $on_the_fly->{tmpfile}, 'temporary file exists';
-
-$manager->kill('test_on_the_fly');
-
-ok !-f $on_the_fly->{tmpfile}, 'temporary file is deleted';
-
-ok scalar $manager->instances == 0, 'and there is no instances';
-
-sub sleep_server { return <<'SERVER';
+my $sleep_server_source = <<'SERVER';
 #!perl
 use strict;
 sleep 100;
 SERVER
+
+# spawn ready-made perl script
+test( test => 't/script/sleep.pl' );
+
+# you can put args into an optional hash
+test( test => { args => 't/script/sleep.pl' } );
+
+# on the fly perl script
+test_on_the_fly( test_on_the_fly => '',
+  { create_server_with => $sleep_server_source }
+);
+
+# you can omit blank args
+test_on_the_fly( test_on_the_fly =>
+  { create_server_with => $sleep_server_source }
+);
+
+# you can pass coderef, which would be parsed by B::Deparse
+test_on_the_fly( test_on_the_fly =>
+  { create_server_with => \&sleep_server_func }
+);
+
+plan tests => $plan;
+foreach my $test (@tests) { $test->() }
+
+sub test {
+  my ($id, @args) = @_;
+
+  $plan += 6;
+
+  push @tests, sub {
+    ok !defined $manager->instance($id), "there should be no $id instance";
+    ok !defined $manager->process($id), "and there should be no $id process";
+    ok scalar $manager->instances == 0, 'they should not be autovivified';
+
+    eval { $manager->spawn( $id => @args ); };
+    ok !$@, "$id server is launched successfully";
+
+    ok $manager->pid($id) > 0, 'and the pid is positive';
+
+    $manager->kill($id);
+
+    ok scalar $manager->instances == 0, 'and there is no instances';
+  };
+}
+
+sub test_on_the_fly {
+  my ($id, @args) = @_;
+
+  $plan += 8;
+
+  push @tests, sub {
+    ok !defined $manager->instance($id), "there should be no $id instance";
+    ok !defined $manager->process($id), "and there should be no $id process";
+    ok scalar $manager->instances == 0, 'they should not be autovivified';
+
+    eval { $manager->spawn( $id => @args ); };
+    ok !$@, "$id server is launched successfully";
+
+    ok $manager->pid($id) > 0, 'and the pid is positive';
+
+    my $instance = $manager->instance($id);
+
+    ok -f $instance->{tmpfile}, 'temporary file exists';
+
+    $manager->kill($id);
+
+    ok !-f $instance->{tmpfile}, 'temporary file is deleted';
+
+    ok scalar $manager->instances == 0, 'and there is no instances';
+  };
+}
+
+sub sleep_server_func {
+  use strict;
+  sleep 100;
 }

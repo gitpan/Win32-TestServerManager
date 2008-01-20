@@ -2,11 +2,12 @@ package Win32::TestServerManager;
 
 use strict;
 use warnings;
+use Carp;
 use Win32;
 use Win32::Process;
 use File::Spec;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 sub new {
   my $class = shift;
@@ -19,14 +20,31 @@ sub spawn {
 
   $self->kill($id) if $self->{$id};
 
-  $args = '' unless defined $args;
+  if ( !defined $args )         { $options = {}; $args = ''; }
+  elsif ( ref $args eq 'HASH' ) { $options = $args; $args = ''; }
+
+  if ( !defined $options )      { $options = {}; }
+  elsif ( ref $options ne 'HASH' ) {
+    croak "Usage: ->spawn( id, args, { options } )";
+  }
+
+  $args .= ' ' . $options->{args} if $options->{args};
 
   my $executable = $options->{executable} || $^X;
+
   my $flag = $options->{cflag} || NORMAL_PRIORITY_CLASS;
      $flag |= CREATE_NEW_CONSOLE if $options->{new_console};
      $flag |= CREATE_NO_WINDOW   if $options->{no_window};
+
   my $workdir = $options->{working_dir} || '.';
+
   if ( $options->{create_server_with} ) {
+    my $code = $options->{create_server_with};
+    if ( ref $code eq 'CODE' ) {
+      require B::Deparse;
+      my $deparser = B::Deparse->new;
+      $code = $deparser->coderef2text( $code );
+    }
     require File::Temp;
     require File::Slurp;
     my $tmpfile = File::Temp::tempnam( $workdir => '_tmp' );
@@ -37,6 +55,7 @@ sub spawn {
     $args = "$args $tmpfile";
     $self->{$id}->{tmpfile} = $tmpfile;
   }
+
   $self->{$id}->{dont_kill} = $options->{dont_kill};
 
   Win32::Process::Create(my $process,
@@ -45,7 +64,7 @@ sub spawn {
     0,
     $flag,
     File::Spec->rel2abs($workdir),
-  ) or die Win32::FormatMessage( Win32::GetLastError() );
+  ) or croak Win32::FormatMessage( Win32::GetLastError() );
 
   $self->{$id}->{process} = $process;
 }
@@ -83,7 +102,15 @@ sub kill {
   $exitcode = 0 unless defined $exitcode;
 
   if ( my $instance = delete $self->{$id} ) {
-    unlink $instance->{tmpfile} if $instance->{tmpfile};
+    if ( $instance->{tmpfile} ) {
+      my $counter = 0;
+      while ( $counter++ < 3 ) {
+        unlink $instance->{tmpfile};
+        last unless -f $instance->{tmpfile};
+        sleep 1;
+        $counter++;
+      }
+    }
     return if $instance->{dont_kill};
 
     $instance->{process}->Kill($exitcode);
@@ -126,10 +153,20 @@ Win32::TestServerManager - manage simple test servers on Win32
         { executable => 'c:\lighttpd\bin\lighttpd.exe' }
     );
 
-    # you can provide temporary server script
+    # you can provide a source code of a temporary server script
     $manager->spawn(
         onthefly => '',
-        { create_server_with => server_script() }
+        { create_server_with => server_script_source() }
+    );
+
+    # you can omit blank command line args
+    $manager->spawn(
+        onthefly => { create_server_with => server_script_source() }
+    );
+
+    # coderef would be deparsed into a source code, and then turned into a script
+    $manager->spawn(
+        onthefly => { create_server_with => \&server_func }
     );
 
     # do some Mech stuff
@@ -141,7 +178,7 @@ Win32::TestServerManager - manage simple test servers on Win32
 
     # other servers will be killed at DESTROY time
 
-    sub server_script { return <<'EndofScript';
+    sub server_script_source { return <<'EndofScript';
     #!c:\perl\bin\perl.exe
 
     my $server = TestServer->new(8080);
@@ -151,6 +188,14 @@ Win32::TestServerManager - manage simple test servers on Win32
     use base 'HTTP::Server::Simple::CGI';
 
     EndofScript
+    }
+
+    sub server_func {
+        my $server = TestServer->new(8080);
+        $server->run;
+
+        package TestServer;
+        use base 'HTTP::Server::Simple::CGI';
     }
 
 =head1 DESCRIPTION
@@ -169,7 +214,7 @@ creates an object.
 
 =head2 spawn
 
-creates a new process and spawns a (server) application. This takes two or three arguments:
+creates a new process and spawns a (server) application. This usually takes two or three arguments:
 
 =over 4
 
@@ -179,7 +224,7 @@ a scalar name of the process you want to create.
 
 =item args
 
-a string which represents command line arguments for the executable (default: perl) to run.
+an optional string which represents command line arguments for the executable (default: perl) to run.
 
 =item options
 
@@ -190,6 +235,10 @@ an optional hashref. Acceptable keys are:
 =item executable
 
 If you want to launch other executable than perl (apache, lighttpd, etc), provide an absolute path to the executable.
+
+=item args
+
+a string which represents command line arguments for the executable to run. If you also set "args" outside the hashref (see above), this optional "args" would be appended.
 
 =item working_dir
 
@@ -223,6 +272,8 @@ A temporary file would be created to be a final argument to the executable. Desp
     );
 
 In this case, the final command line argument passed to Win32::Process::Create would be "c:\lighttpd\bin\lighttpd.exe -D -f <temporary file>".
+
+As of 0.03, you can provide a code reference, which would be deparsed and then turned into a server script.
 
 =item dont_kill
 
