@@ -7,7 +7,7 @@ use Win32;
 use Win32::Process;
 use File::Spec;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 sub new {
   my $class = shift;
@@ -48,10 +48,7 @@ sub spawn {
     require File::Temp;
     require File::Slurp;
     my $tmpfile = File::Temp::tempnam( $workdir => '_tmp' );
-    File::Slurp::write_file(
-      $tmpfile,
-      $options->{create_server_with},
-    );
+    File::Slurp::write_file( $tmpfile, $code );
     $args = "$args $tmpfile";
     $self->{$id}->{tmpfile} = $tmpfile;
   }

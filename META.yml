@@ -1,20 +1,26 @@
 --- #YAML:1.0
-name:                Win32-TestServerManager
-version:             0.03
-abstract:            manage simple test servers on Win32
-license:             perl
-author:              
+name:               Win32-TestServerManager
+version:            0.04
+abstract:           manage simple test servers on Win32
+author:
     - Kenichi Ishigaki <ishigaki@cpan.org>
-generated_by:        ExtUtils::MakeMaker version 6.42
-distribution_type:   module
-requires:     
-    B::Deparse:                    0
-    File::Slurp:                   0
-    File::Spec:                    0
-    File::Temp:                    0
-    Test::UseAllModules:           0
-    Win32:                         0
-    Win32::Process:                0
+license:            perl
+distribution_type:  module
+configure_requires:
+    ExtUtils::MakeMaker:  0
+requires:
+    B::Deparse:           0
+    File::Slurp:          0
+    File::Spec:           0
+    File::Temp:           0
+    Test::UseAllModules:  0
+    Win32:                0
+    Win32::Process:       0
+no_index:
+    directory:
+        - t
+        - inc
+generated_by:       ExtUtils::MakeMaker version 6.46
 meta-spec:
-    url:     http://module-build.sourceforge.net/META-spec-v1.3.html
-    version: 1.3
+    url:      http://module-build.sourceforge.net/META-spec-v1.4.html
+    version:  1.4

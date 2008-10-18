@@ -35,6 +35,14 @@ test_on_the_fly( test_on_the_fly =>
   { create_server_with => \&sleep_server_func }
 );
 
+# and you can pass an anonymous subroutine.
+test_on_the_fly( test_on_the_fly =>
+  { create_server_with => sub {
+    use strict;
+    sleep 100;
+  }}
+);
+
 plan tests => $plan;
 foreach my $test (@tests) { $test->() }
 
